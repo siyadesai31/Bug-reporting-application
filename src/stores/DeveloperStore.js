@@ -61,6 +61,14 @@ export const useDeveloperStore = defineStore('Developer', {
     setSort(sort) {
       this.sort = sort;
       this.fetchAssignedBugs(); // Re-fetch bugs after sort change
+    },
+    fetchDevelopers() {
+      try {
+        const response = api.get('/developers'); // Adjust the API endpoint accordingly
+        this.developers = response.data;
+      } catch (error) {
+        console.error('Error fetching developers:', error);
+      }
     }
   }
 });

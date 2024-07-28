@@ -12,18 +12,19 @@
         <button @click="setSort('assignTo')">Assignto</button>
         <button @click="setSort('dueDate')">DueDate</button>
       </div>
-      <q-item-section side top>
-        <input 
-          type="text" 
-          placeholder="Search by title" 
-          v-model="searchTitle" 
-          @input="filterBugs" 
-          style="width:16em"
-        >
-      </q-item-section>
     </div>
-    
-    <q-item 
+
+    <q-item-section side top>
+      <input
+        type="text"
+        placeholder="Search by title"
+        v-model="searchTitle"
+        @input="filterBugs"
+        style="width:16em"
+      >
+    </q-item-section>
+
+    <q-item
       v-for="bug in filteredBugs"
       :key="bug.bugid"
       class="bug-card"
@@ -63,16 +64,16 @@
       </q-item-section>
 
       <q-item-section side>
-        <q-btn 
+        <q-btn
           icon="visibility"
-          @click="viewBugDetails(bug)" 
-          dense 
+          @click="viewBugDetails(bug)"
+          dense
           color="primary"
           rounded
         />
       </q-item-section>
     </q-item>
-    
+
     <!-- View Bug Details Dialog -->
     <q-dialog v-model="showViewDialog" persistent>
       <q-card class="q-dialog--large">
@@ -86,23 +87,28 @@
             <!-- Conditionally render the date range -->
             <div v-if="showDateRange">
               <q-item-label>Due Date: From {{ selectedBug.dueDate?.from || 'N/A' }} To {{ selectedBug.dueDate?.to || 'N/A' }}</q-item-label>
+              <q-item-label>
+                Days Left: 
+                <span v-if="selectedBug.daysLeft > 0">{{ selectedBug.daysLeft }} day(s) left</span>
+                <span v-else class="overdue">Overdue by {{ selectedBug.overdue }} day(s)</span>
+              </q-item-label>
             </div>
             <!-- Editable comment section -->
             <q-input v-model="selectedBug.comment" label="Comment" type="textarea" />
           </div>
         </q-card-section>
         <q-card-actions align="right">
-          <q-btn 
-            icon="event" 
-            @click="showDateDialog = true; showDateRange = true" 
-            dense 
-            color="primary" 
+          <q-btn
+            icon="event"
+            @click="showDateDialog = true; showDateRange = true"
+            dense
+            color="primary"
           />
-          <q-btn 
-            icon="check" 
-            @click="saveBug(selectedBug)" 
-            dense 
-            color="primary" 
+          <q-btn
+            icon="check"
+            @click="saveBug(selectedBug)"
+            dense
+            color="primary"
           />
           <q-btn flat label="Close" v-close-popup />
         </q-card-actions>
@@ -186,6 +192,17 @@ const filteredBugs = computed(() => {
     });
   }
 
+  // Apply due date filter
+  if (filter.value === 'dueDate') {
+    const currentDate = new Date();
+    bugs = bugs.filter(bug => {
+      if (!bug.dueDate || !bug.dueDate.to) return false;
+      const dueDate = new Date(bug.dueDate.to);
+      const daysLeft = Math.ceil((dueDate - currentDate) / (1000 * 60 * 60 * 24));
+      return daysLeft >= 0;
+    });
+  }
+
   return bugs;
 });
 
@@ -204,6 +221,19 @@ function updateAssignment(bugid, assignedTo) {
 
 function viewBugDetails(bug) {
   selectedBug.value = { ...bug }; // Create a copy to edit
+  selectedDateRange.value = bug.dueDate || { from: null, to: null }; // Set the date range for the selected bug
+  
+  // Calculate days left or overdue status
+  const currentDate = new Date();
+  const dueDate = new Date(bug.dueDate?.to);
+  const timeDiff = dueDate - currentDate;
+  const daysLeft = Math.ceil(timeDiff / (1000 * 60 * 60 * 24));
+  if (daysLeft > 0) {
+    selectedBug.value.daysLeft = daysLeft;
+  } else {
+    selectedBug.value.overdue = Math.abs(daysLeft);
+  }
+
   showViewDialog.value = true;
 }
 
@@ -215,40 +245,30 @@ function saveBug(bug) {
   }
 }
 
-function cancelEdit() {
-  selectedBug.value = null;
-  showViewDialog.value = false; // Close the dialog
-}
-
 function saveDateRange() {
   if (selectedBug.value) {
-    selectedBug.value.dueDate = selectedDateRange.value;
-    bugStore.updateBug(selectedBug.value);
-    showDateDialog.value = false;
+    selectedBug.value.dueDate = { ...selectedDateRange.value };
+    showDateDialog.value = false; // Close the date selection dialog
   }
 }
 
 function setFilter(newFilter) {
   filter.value = newFilter;
-  priority.value = 'all'; // Reset priority filter
-  sort.value = 'none'; // Reset sort criteria
 }
 
 function setPriority(newPriority) {
   priority.value = newPriority;
-  filter.value = 'all'; // Reset status filter
-  sort.value = 'none'; // Reset sort criteria
 }
 
 function setSort(newSort) {
   sort.value = newSort;
-  filter.value = 'all'; // Reset status filter
-  priority.value = 'all'; // Reset priority filter
 }
 
 onMounted(() => {
-  bugStore.fetchBugs(); // Ensure bugs are fetched when component mounts
+  bugStore.fetchBugs();
+  developerStore.fetchDevelopers();
 });
+
 </script>
 
 <style>
@@ -274,14 +294,14 @@ h4 {
 
 .buttons button {
   background-color: lavender;
-  padding: 8px 16px;
+  /* padding: 8px 16px; */
   border-radius: 20px;
   border: none;
   outline: none;
   cursor: pointer;
   color: grey;
   flex: 1; /* Ensure buttons take equal space in the container */
-  min-width: 100px; /* Set a minimum width for buttons */
+  min-width: 80px; /* Set a minimum width for buttons */
   text-align: center; /* Center text in buttons */
 }
 
@@ -319,6 +339,11 @@ h4 {
 .q-dialog--large {
   width: 80vw; /* Adjust the width as needed */
   max-width: 900px; /* Max width for larger screens */
+}
+
+.overdue {
+  color: red;
+  font-weight: bold;
 }
 
 @media (max-width: 600px) {
