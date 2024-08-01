@@ -12,7 +12,8 @@ export const useDeveloperStore = defineStore('Developer', {
     assignedBugs: [],
     errorMessage: '',
     filter: 'all',
-    sort: 'none'
+    sort: 'none',
+    priorityFilter: 'all'
   }),
   getters: {
     filteredBugs: (state) => {
@@ -22,6 +23,10 @@ export const useDeveloperStore = defineStore('Developer', {
         bugs = bugs.filter(bug => bug.completed);
       } else if (state.filter === 'pending') {
         bugs = bugs.filter(bug => !bug.completed);
+      }
+
+      if (state.priorityFilter !== 'all') {
+        bugs = bugs.filter(bug => bug.priority === state.priorityFilter);
       }
 
       if (state.sort === 'priority') {
@@ -61,6 +66,10 @@ export const useDeveloperStore = defineStore('Developer', {
     setSort(sort) {
       this.sort = sort;
       this.fetchAssignedBugs(); // Re-fetch bugs after sort change
+    },
+    setPriorityFilter(priority) {
+      this.priorityFilter = priority;
+      this.fetchAssignedBugs(); // Re-fetch bugs after priority filter change
     },
     fetchDevelopers() {
       try {

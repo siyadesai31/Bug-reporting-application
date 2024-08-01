@@ -3,10 +3,11 @@
     <div class="login-section">
       <img
         alt="logo"
-        src="~assets/bug-reporting-logo.png"
+        src="../assets/WhatsApp Image 2024-07-30 at 10.15.14 AM.jpeg"
         class="logo"
       >
       <form @submit.prevent="handleSubmit">
+        <h4>LOGIN</h4>
         <label>Username:</label>
         <input type="text" required v-model="username">
         <label>Password:</label>
@@ -37,8 +38,8 @@ const router = useRouter();
 const userStore = useUserStore();
 
 const handleSubmit = () => {
-  console.log('Username:', username.value);
-  console.log('Password:', password.value);
+  // console.log('Username:', username.value);
+  // console.log('Password:', password.value);
   const route = userStore.login(username.value, password.value);
   if (route) {
     router.push(route);
@@ -52,13 +53,20 @@ const handleSubmit = () => {
 .login-section {
   display: flex;
   align-items: center;
-  gap: 20px;
-  flex-direction: column;
+  gap: 10px;
+  flex-direction: row;
 }
 
 .logo {
-  width: 400px;
-  height: 400px;
+  width: 500px;
+  height: 500px;
+  border-radius: 10px;
+}
+
+h4{
+  text-align: center;
+  color: #8a2be2;
+  font-weight: bold;
 }
 
 form {
@@ -66,6 +74,8 @@ form {
   padding: 20px;
   border-radius: 10px;
   box-sizing: border-box;
+  height: 500px;
+
 }
 
 label {
@@ -99,14 +109,15 @@ button {
   margin-top: 10px;
 }
 
-@media (min-width: 600px) {
+@media (max-width: 600px) {
   .login-section {
-    flex-direction: row;
+    flex-direction: column;
     justify-content: center;
   }
 
   .logo {
-    max-width: 200px;
+    max-width: 350px;
+    overflow: hidden;
   }
 
   form {

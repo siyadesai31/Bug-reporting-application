@@ -6,8 +6,9 @@
       <button @click="showAll">All</button>
       <button @click="filterCompleted">Completed</button>
       <button @click="filterPending">Pending</button>
-      <button @click="sortByPriority">Priority</button>
-    </div>
+      <button @click="filterByPriority('High')">High</button>
+      <button @click="filterByPriority('Med')">Med</button>
+      <button @click="filterByPriority('Low')">Low</button></div>
     <div>
       <div v-if="assignedBugs.length > 0">
         <q-item 
@@ -40,7 +41,7 @@
 
         <!-- Bug Details Dialog -->
         <q-dialog v-model="showViewDialog">
-          <q-card class=".q-dialog--large">
+          <q-card class="q-dialog--large">
             <q-card-section>
               <q-input v-model="selectedBug.title" label="Title" readonly />
               <q-input v-model="selectedBug.description" label="Description" type="textarea" readonly />
@@ -49,6 +50,11 @@
               <q-item-label>Assigned To: {{ selectedBug.assignedTo }}</q-item-label>
               <div v-if="selectedBug.dueDate">
                 <q-item-label>Due Date: From {{ selectedBug.dueDate.from }} To {{ selectedBug.dueDate.to }}</q-item-label>
+                <q-item-label>
+                  Days Left: 
+                  <span v-if="daysLeft > 0">{{ daysLeft }} day(s) left</span>
+                  <span v-else class="overdue">Overdue by {{ -daysLeft }} day(s)</span>
+                </q-item-label>
               </div>
               <q-input v-model="selectedBug.comment" label="Comment" type="textarea" />
             </q-card-section>
@@ -92,6 +98,15 @@ const showDateDialog = ref(false);
 const selectedBug = ref(null);
 const selectedDateRange = ref(null);
 
+const daysLeft = computed(() => {
+  if (!selectedBug.value || !selectedBug.value.dueDate || !selectedBug.value.dueDate.to) {
+    return null;
+  }
+  const dueDate = new Date(selectedBug.value.dueDate.to);
+  const currentDate = new Date();
+  return Math.ceil((dueDate - currentDate) / (1000 * 60 * 60 * 24));
+});
+
 function viewBugDetails(bug) {
   selectedBug.value = { ...bug };  // Create a copy of the bug object
   showViewDialog.value = true;
@@ -111,18 +126,21 @@ function toggleCompletion(bug) {
 
 function showAll() {
   developerStore.setFilter('all');
+  developerStore.setPriorityFilter('all');
 }
 
 function filterCompleted() {
   developerStore.setFilter('completed');
+  developerStore.setPriorityFilter('all');
 }
 
 function filterPending() {
   developerStore.setFilter('pending');
+  developerStore.setPriorityFilter('all');
 }
 
-function sortByPriority() {
-  developerStore.setSort('priority');
+function filterByPriority(priority) {
+  developerStore.setPriorityFilter(priority);
 }
 </script>
 
@@ -180,8 +198,14 @@ h5 {
 .buttons button:hover {
   background-color: blueviolet;
 }
+
 .q-dialog--large {
   width: 80vw; /* Adjust the width as needed */
   max-width: 900px; /* Max width for larger screens */
+}
+
+.overdue {
+  color: red;
+  font-weight: bold;
 }
 </style>
