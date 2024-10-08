@@ -5,25 +5,37 @@
       <h4>Bug List</h4>
       <q-btn label="add task" color="primary" @click="showAddBugDialog = true" />
     </div>
-    <div class="buttons">
-      <button @click="setFilter('all')">all</button>
-      <button @click="setFilter('completed')">completed</button>
-      <button @click="setFilter('pending')">pending</button>
-      <button @click="setPriority('High')">high</button>
-      <button @click="setPriority('Med')">med</button>
-      <button @click="setPriority('Low')">low</button>
-      <!-- <button @click="setSort('assignTo')">Assignto</button> -->
-      <!-- <button @click="setSort('dueDate')">DueDate</button> -->
+    <div class="row">
+      <q-select
+        v-model="filterStatus"
+        clearable
+        @update:model-value="applyFilter"
+        :options="statusOptions"
+        class="col-6 q-pl-sm"
+        style="border: 1px solid black"
+        label="Filter By Status"
+      />
+      <q-select
+        v-model="filterPriority"
+        clearable
+        @update:model-value="applyFilter"
+        :options="priorityOptions"
+        class="col-6 q-pl-sm"
+        style="border: 1px solid black"
+        label="Filter By Priority"
+      />
     </div>
-    <q-item-section side top>
+    <div class="search">
+      <q-item-section side top>
       <input 
         type="text" 
         placeholder="Search by title" 
         v-model="searchTitle" 
         @input="filterBugs" 
-        style="width:16em"
+        style="width:50%; padding:10px; margin-bottom:10px;"
       >
-    </q-item-section>
+      </q-item-section>
+    </div>
     
     <q-item 
       v-for="bug in filteredBugs"
@@ -45,7 +57,7 @@
       <q-item-section side>
         <q-select
           v-model="bug.priority"
-          :options="['High', 'Med', 'Low']"
+          :options="priorityOptions"
           dense
         />
       </q-item-section>
@@ -102,7 +114,7 @@
             <q-input v-model="newBug.description" label="Description" type="textarea" />
             <q-select
               v-model="newBug.priority"
-              :options="['High', 'Med', 'Low']"
+              :options="priorityOptions"
               label="Priority"
               dense
             />
@@ -128,18 +140,15 @@ const developerStore = useDeveloperStore();
 const showViewDialog = ref(false);
 const showAddBugDialog = ref(false);
 const selectedBug = ref(null);
-const filter = ref('all');
-const priority = ref('all');
-const sort = ref('none');
 const searchTitle = ref('');
 const newBug = ref({ title: '', description: '', priority: 'Low' });
 
-const assignToOptions = computed(() => {
-  return developerStore.developers.map(dev => ({
-    label: `${dev.name}`,
-    value: dev.name,
-  }));
-});
+// Dropdown filter values
+const filterStatus = ref(null);
+const filterPriority = ref(null);
+
+const statusOptions = [ 'completed', 'pending'];
+const priorityOptions = [ 'High', 'Med', 'Low'];
 
 const filteredBugs = computed(() => {
   let bugs = bugStore.bugs;
@@ -148,26 +157,16 @@ const filteredBugs = computed(() => {
     bugs = bugs.filter(bug => bug.title.toLowerCase().includes(searchTitle.value.toLowerCase()));
   }
 
-  if (filter.value === 'completed') {
-    bugs = bugs.filter(bug => bug.completed);
-  } 
-  else if (filter.value === 'pending') {
-    bugs = bugs.filter(bug => !bug.completed);
+  if (filterStatus.value && filterStatus.value !== 'all') {
+    if (filterStatus.value === 'completed') {
+      bugs = bugs.filter(bug => bug.completed);
+    } else if (filterStatus.value === 'pending') {
+      bugs = bugs.filter(bug => !bug.completed);
+    }
   }
 
-  if (priority.value !== 'all') {
-    bugs = bugs.filter(bug => bug.priority === priority.value);
-  }
-
-  if (sort.value === 'priority') {
-    const priorityOrder = { 'High': 3, 'Med': 2, 'Low': 1 };
-    bugs = bugs.slice().sort((a, b) => priorityOrder[b.priority] - priorityOrder[a.priority]);
-  } 
-  else if (sort.value === 'assignTo') {
-    bugs = bugs.slice().sort((a, b) => {
-      return assignToOptions.value.findIndex(option => option.value === b.assignedTo) -
-             assignToOptions.value.findIndex(option => option.value === a.assignedTo);
-    });
+  if (filterPriority.value && filterPriority.value !== 'all') {
+    bugs = bugs.filter(bug => bug.priority === filterPriority.value);
   }
 
   return bugs;
@@ -181,8 +180,7 @@ function viewBugDetails(bug) {
   const daysLeft = Math.ceil(timeDiff / (1000 * 60 * 60 * 24));
   if (daysLeft > 0) {
     selectedBug.value.daysLeft = daysLeft;
-  } 
-  else {
+  } else {
     selectedBug.value.overdue = Math.abs(daysLeft);
   }
   showViewDialog.value = true;
@@ -202,28 +200,8 @@ function addNewBug() {
   showAddBugDialog.value = false;
 }
 
-function setFilter(newFilter) {
-  filter.value = newFilter;
-  if (newFilter === 'all') {
-    priority.value = 'all'; // Reset priority filter when 'all' is selected
-    sort.value = 'none'; // Reset sorting when 'all' is selected
-  }
-}
-
-function setPriority(newPriority) {
-  priority.value = newPriority;
-}
-
-function setSort(newSort) {
-  if (sort.value === newSort) {
-    bugStore.toggleSortOrder();
-  } 
-  else {
-    sort.value = newSort;
-  }
-}
-
-function filterBugs() {
+function applyFilter() {
+  // Trigger the computed property to recalculate based on filters
   filteredBugs.value;
 }
 
@@ -249,6 +227,9 @@ h5 {
   font-size: 1cm;
 }
 
+.search{
+  margin-top: 10px;
+}
 .buttons {
   display: flex;
   flex-wrap: wrap;

@@ -3,7 +3,7 @@
     <div class="login-section">
       <img
         alt="logo"
-        src="../assets/WhatsApp Image 2024-07-30 at 10.15.14 AM.jpeg"
+        src="../assets/bug-reporting-logo.png"
         class="logo"
       >
       <form @submit.prevent="handleSubmit">
@@ -75,7 +75,7 @@ form {
   border-radius: 10px;
   box-sizing: border-box;
   height: 500px;
-
+  width: 300px;
 }
 
 label {
@@ -93,6 +93,7 @@ input {
   border: none;
   border-bottom: 1px solid gray;
   color: grey;
+  width: 100%;
 }
 
 button {

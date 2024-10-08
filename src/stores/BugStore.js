@@ -123,9 +123,14 @@ export const useBugStore = defineStore('bugs', {
       console.log(updatedBug);
       const index = this.bugs.findIndex(bug => bug.bugid === updatedBug.bugid);
       if (index !== -1) {
-        this.bugs[index] = updatedBug;
+        // this.bugs[index] = updatedBug;
         // const developerStore = useDeveloperStore();
         // developerStore.updateAssignedBugs(updatedBug.bugid); // Pass bugid
+        this.bugs[index] = {
+          ...updatedBug,
+          assignedTo: updatedBug.assignedTo.value || updatedBug.assignedTo
+        };
+        // this.bugs[index] = updatedBug;
       }
     }
   }

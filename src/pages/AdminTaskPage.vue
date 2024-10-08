@@ -2,27 +2,66 @@
   <q-page padding>
     <h5>Hello Admin</h5>
     <h4>Bug List</h4>
-    <div class="header-section">
-      <div class="buttons">
-        <button @click="setFilter('all')">all</button>
-        <button @click="setFilter('completed')">completed</button>
-        <button @click="setFilter('pending')">pending</button>
-        <button @click="setPriority('High')">high</button>
-        <button @click="setPriority('Med')">med</button>
-        <button @click="setPriority('Low')">low</button>
-        <button @click="setSort('assignTo')">Assignto</button>
-      </div>
-    </div>
 
-    <q-item-section side top>
+    <div class="row">
+      <!-- <q-select
+        v-model="filterStatus"
+        clearable
+        @update:model-value="applyFilter()"
+        :options="statusOptions"
+        class="col-4 q-pl-sm"
+        style="border: 1px solid black"
+        label="Filter By Status"
+      />
+      <q-select
+        v-model="filterPriority"
+        clearable
+        @update:model-value="applyFilter()"
+        :options="priorityOptions"
+        class="col-4 q-pl-sm"
+        style="border: 1px solid black"
+        label="Filter By Priority"
+      />
+      <q-select
+        v-model="filterAssignedTo"
+        clearable
+        @update:model-value="applyFilter()"
+        :options="assignToOptions"
+        class="col-4 q-pl-sm"
+        style="border: 1px solid black"
+        label="Filter By Assigned To"
+      /> -->
+      <q-select
+        v-model="filterStatus"
+        clearable
+        @update:model-value="applyFilters"
+        :options="statusOptions"
+        class="col-6 q-pl-sm"
+        style="border: 1px solid black"
+        label="Filter By Status"
+      />
+      <q-select
+        v-model="filterPriority"
+        clearable
+        @update:model-value="applyFilters"
+        :options="priorityOptions"
+        class="col-6 q-pl-sm"
+        style="border: 1px solid black"
+        label="Filter By Priority"
+      />
+    </div>
+    <div class="search">
+      <q-item-section side top>
       <input
         type="text"
         placeholder="Search by title"
         v-model="searchTitle"
         @input="filterBugs"
-        style="width:16em"
+        style="width:50%; margin-bottom:10px; padding:10px;"
       >
     </q-item-section>
+    </div>
+    
 
     <q-item
       v-for="bug in filteredBugs"
@@ -39,15 +78,12 @@
         <q-item-label>
           <span>{{ bug.title }}</span>
         </q-item-label>
-        <!-- <q-item-label caption>
-          <span>{{ bug.description }}</span>
-        </q-item-label> -->
       </q-item-section>
 
       <q-item-section side>
         <q-select
           v-model="bug.priority"
-          :options="['High', 'Med', 'Low']"
+          :options="priorityOptions"
           dense
         />
       </q-item-section>
@@ -142,11 +178,16 @@ const showViewDialog = ref(false);
 const showDateDialog = ref(false);
 const selectedDateRange = ref(null);
 const selectedBug = ref(null);
-const filter = ref('all');
-const priority = ref('all');
-const sort = ref('none');
 const searchTitle = ref('');
 const showDateRange = ref(false);
+
+// Dropdown filter values
+const filterStatus = ref(null);
+const filterPriority = ref(null);
+const filterAssignedTo = ref(null);
+
+const statusOptions = ['Pending', 'Completed'];
+const priorityOptions = ['High', 'Med', 'Low'];
 
 const assignToOptions = computed(() => {
   return developerStore.developers.map(dev => ({
@@ -163,85 +204,50 @@ const filteredBugs = computed(() => {
     bugs = bugs.filter(bug => bug.title.toLowerCase().includes(searchTitle.value.toLowerCase()));
   }
 
-  // Apply filter
-  if (filter.value === 'completed') {
-    bugs = bugs.filter(bug => bug.completed);
-  } 
-  else if (filter.value === 'pending') {
-    bugs = bugs.filter(bug => !bug.completed);
+  // Apply status filter
+  if (filterStatus.value) {
+    if (filterStatus.value === 'Completed') {
+      bugs = bugs.filter(bug => bug.completed);
+    } else if (filterStatus.value === 'Pending') {
+      bugs = bugs.filter(bug => !bug.completed);
+    }
   }
 
   // Apply priority filter
-  if (priority.value !== 'all') {
-    bugs = bugs.filter(bug => bug.priority === priority.value);
+  if (filterPriority.value) {
+    bugs = bugs.filter(bug => bug.priority === filterPriority.value);
   }
 
-  // Apply sorting
-  if (sort.value === 'priority') {
-    const priorityOrder = { 'High': 3, 'Med': 2, 'Low': 1 };
-    bugs = bugs.slice().sort((a, b) => priorityOrder[b.priority] - priorityOrder[a.priority]);
-  } 
-  else if (sort.value === 'assignTo') {
-    bugs = bugs.slice().sort((a, b) => {
-      return assignToOptions.value.findIndex(option => option.value === b.assignedTo) -
-             assignToOptions.value.findIndex(option => option.value === a.assignedTo);
-    });
-  } 
-  else if (sort.value === 'dueDate') {
-    bugs = bugs.slice().sort((a, b) => {
-      const aDueDate = new Date(a.dueDate?.to || '').getTime();
-      const bDueDate = new Date(b.dueDate?.to || '').getTime();
-      return aDueDate - bDueDate;
-    });
-  }
-
-  // Apply due date filter
-  if (filter.value === 'dueDate') {
-    const currentDate = new Date();
-    bugs = bugs.filter(bug => {
-      if (!bug.dueDate || !bug.dueDate.to) return false;
-      const dueDate = new Date(bug.dueDate.to);
-      const daysLeft = Math.ceil((dueDate - currentDate) / (1000 * 60 * 60 * 24));
-      return daysLeft >= 0;
-    });
-  }
-
-  // If 'all' is selected, ensure no specific filter is applied
-  if (filter.value === 'all') {
-    // No additional filtering needed
+  // Apply assigned to filter
+  if (filterAssignedTo.value) {
+    bugs = bugs.filter(bug => bug.assignedTo === filterAssignedTo.value);
   }
 
   return bugs;
 });
 
-
 function updateAssignment(bugid, assignedTo) {
-  console.log('updateAssignment in Task.vue');
-  console.log(bugid);
-  console.log(assignedTo);
-
   const bug = bugStore.bugs.find(b => b.bugid === bugid);
   if (bug) {
-    bug.assignedTo = assignedTo.value; // Ensure correct value extraction
-    bugStore.updateBug(bug); // Update the bug in the store
-    developerStore.fetchAssignedBugs(); // Re-fetch assigned bugs for the developer
+    bug.assignedTo = assignedTo;
+    bugStore.updateBug(bug);
+    developerStore.fetchAssignedBugs();
   }
 }
 
 function viewBugDetails(bug) {
-  selectedBug.value = { ...bug }; // Create a copy to edit
-  selectedDateRange.value = bug.dueDate || { from: null, to: null }; // Set the date range for the selected bug
-  
-  // Calculate days left or overdue status
+  selectedBug.value = { ...bug };
+  selectedDateRange.value = bug.dueDate || { from: null, to: null };
+
   const currentDate = new Date();
   const dueDate = new Date(bug.dueDate?.to);
   const timeDiff = dueDate - currentDate;
   const daysLeft = Math.ceil(timeDiff / (1000 * 60 * 60 * 24));
   if (daysLeft > 0) {
     selectedBug.value.daysLeft = daysLeft;
-    selectedBug.value.overdue = null; // Reset overdue
+    selectedBug.value.overdue = null;
   } else {
-    selectedBug.value.daysLeft = null; // Reset days left
+    selectedBug.value.daysLeft = null;
     selectedBug.value.overdue = Math.abs(daysLeft);
   }
 
@@ -258,8 +264,7 @@ function saveBug(bug) {
 function saveDateRange() {
   if (selectedBug.value) {
     selectedBug.value.dueDate = selectedDateRange.value;
-    
-    // Update days left or overdue status
+
     const currentDate = new Date();
     const dueDate = new Date(selectedDateRange.value.to);
     const timeDiff = dueDate - currentDate;
@@ -267,42 +272,20 @@ function saveDateRange() {
 
     if (daysLeft > 0) {
       selectedBug.value.daysLeft = daysLeft;
-      selectedBug.value.overdue = null; // Reset overdue
+      selectedBug.value.overdue = null;
     } else {
-      selectedBug.value.daysLeft = null; // Reset days left
+      selectedBug.value.daysLeft = null;
       selectedBug.value.overdue = Math.abs(daysLeft);
     }
 
     showDateDialog.value = false;
-    saveBug(selectedBug.value); // Save changes
+    saveBug(selectedBug.value);
   }
 }
 
-function setFilter(newFilter) {
-  filter.value = newFilter;
-
-  if (newFilter === 'all') {
-    priority.value = 'all'; // Reset priority filter
-    sort.value = 'none'; // Reset sorting if needed
-  }
-  // Trigger bug filtering
-  // filterBugs();
+function applyFilter() {
+  // Trigger the computed property to recalculate based on filters
 }
-
-function setPriority(newPriority) {
-  priority.value = newPriority;
-  // filterBugs();
-}
-
-function setSort(newSort) {
-  sort.value = newSort;
-  // filterBugs();
-}
-
-// function filterBugs() {
-//   // Trigger filtering by updating the computed property
-// }
-
 </script>
 
 <style>
@@ -321,7 +304,9 @@ h5 {
   font-weight: 500;
   font-size: 1cm;
 }
-
+.search{
+  margin-top: 10px;
+}
 
 .bug-card {
   display: flex;

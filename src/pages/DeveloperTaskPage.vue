@@ -2,17 +2,43 @@
   <q-page padding>
     <h5>Hello Developer</h5>
     <h4>Bug List</h4>
-    <div class="buttons">
+
+    <!-- Filters -->
+    <div class="row">
+      <q-select
+        v-model="filterStatus"
+        clearable
+        @update:model-value="applyFilters"
+        :options="statusOptions"
+        class="col-6 q-pl-sm"
+        style="border: 1px solid black"
+        label="Filter By Status"
+      />
+      <q-select
+        v-model="filterPriority"
+        clearable
+        @update:model-value="applyFilters"
+        :options="priorityOptions"
+        class="col-6 q-pl-sm"
+        style="border: 1px solid black"
+        label="Filter By Priority"
+      />
+    </div>
+
+    <!-- Filter Buttons -->
+    <!-- <div class="buttons">
       <button @click="showAll">All</button>
       <button @click="filterCompleted">Completed</button>
       <button @click="filterPending">Pending</button>
       <button @click="filterByPriority('High')">High</button>
       <button @click="filterByPriority('Med')">Med</button>
-      <button @click="filterByPriority('Low')">Low</button></div>
+      <button @click="filterByPriority('Low')">Low</button>
+    </div> -->
+
     <div>
-      <div v-if="assignedBugs.length > 0">
+      <div v-if="filteredBugs.length > 0">
         <q-item 
-          v-for="bug in assignedBugs"
+          v-for="bug in filteredBugs"
           :key="bug.bugid"
           @click="toggleCompletion(bug)"
           :class="bug.completed ? 'bg-lightgreen' : 'bg-lavender'"
@@ -91,12 +117,39 @@ import { useDeveloperStore } from '../stores/DeveloperStore';
 import { useBugStore } from '../stores/BugStore';
 
 const developerStore = useDeveloperStore();
-const assignedBugs = computed(() => developerStore.filteredBugs);
+const bugStore = useBugStore();
 
 const showViewDialog = ref(false);
 const showDateDialog = ref(false);
 const selectedBug = ref(null);
 const selectedDateRange = ref(null);
+
+// Filters
+const filterStatus = ref(null);
+const filterPriority = ref(null);
+
+const statusOptions = ['Pending', 'Completed'];
+const priorityOptions = ['High', 'Med', 'Low'];
+
+const filteredBugs = computed(() => {
+  let bugs = developerStore.filteredBugs;
+
+  // Apply status filter
+  if (filterStatus.value) {
+    if (filterStatus.value === 'Completed') {
+      bugs = bugs.filter(bug => bug.completed);
+    } else if (filterStatus.value === 'Pending') {
+      bugs = bugs.filter(bug => !bug.completed);
+    }
+  }
+
+  // Apply priority filter
+  if (filterPriority.value) {
+    bugs = bugs.filter(bug => bug.priority === filterPriority.value);
+  }
+
+  return bugs;
+});
 
 const daysLeft = computed(() => {
   if (!selectedBug.value || !selectedBug.value.dueDate || !selectedBug.value.dueDate.to) {
@@ -113,36 +166,48 @@ function viewBugDetails(bug) {
 }
 
 function saveComment(bug) {
-  const bugIndex = assignedBugs.value.findIndex(b => b.bugid === bug.bugid);
+  const bugIndex = developerStore.filteredBugs.findIndex(b => b.bugid === bug.bugid);
   if (bugIndex !== -1) {
-    assignedBugs.value[bugIndex].comment = bug.comment;
+    developerStore.filteredBugs[bugIndex].comment = bug.comment;
   }
   showViewDialog.value = false;
 }
 
 function toggleCompletion(bug) {
   bug.completed = !bug.completed;
+  bugStore.updateBug(bug); // Assuming updateBug is available in the store
 }
 
 function showAll() {
-  developerStore.setFilter('all');
-  developerStore.setPriorityFilter('all');
+  filterStatus.value = null;
+  filterPriority.value = null;
 }
 
 function filterCompleted() {
-  developerStore.setFilter('completed');
-  developerStore.setPriorityFilter('all');
+  filterStatus.value = 'Completed';
 }
 
 function filterPending() {
-  developerStore.setFilter('pending');
-  developerStore.setPriorityFilter('all');
+  filterStatus.value = 'Pending';
 }
 
 function filterByPriority(priority) {
-  developerStore.setPriorityFilter(priority);
+  filterPriority.value = priority;
+}
+
+function saveDateRange() {
+  if (selectedBug.value) {
+    selectedBug.value.dueDate = selectedDateRange.value;
+    showDateDialog.value = false;
+    saveComment(selectedBug.value);
+  }
+}
+
+function applyFilters() {
+  // This function will be automatically triggered by the computed property
 }
 </script>
+
 
 <style>
 h4 {
@@ -162,6 +227,9 @@ h5 {
   font-weight: 500;
   font-size: 1cm;
 }
+/* .row{
+  margin-bottom: 10px;
+} */
 
 .bug-card {
   display: flex;
